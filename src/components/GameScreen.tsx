@@ -4,7 +4,7 @@ import { Heart, Pause, Play, Home, RotateCcw, AlertTriangle } from 'lucide-react
 import { GameState, GameHistoryItem, Language } from '../types';
 import { getLessonWords, Word, YCT_VOCAB } from '../data/vocabulary';
 import audioManifest from '../data/audioManifest.json';
-import { cn } from '../lib/utils';
+import { cn, resolveAudioUrl } from '../lib/utils';
 
 // Core Game Arena Component (Shared between Solo and PK)
 interface ArenaProps {
@@ -307,9 +307,10 @@ export const GameScreen: React.FC<{
   const playAudio = useCallback((word: Word) => {
     // 1. Prefer explicit audio path if defined on the word object
     if (word.audio) {
-      const audio = new Audio(word.audio);
+      const audioUrl = resolveAudioUrl(word.audio);
+      const audio = new Audio(audioUrl);
       audio.play().catch(err => {
-        console.error(`Failed to play explicit audio at ${word.audio}:`, err);
+        console.error(`Failed to play explicit audio at ${audioUrl}:`, err);
         fallbackToSpeech(word.character);
       });
       return;
@@ -322,9 +323,10 @@ export const GameScreen: React.FC<{
     
     if (fileName) {
       const audioPath = `/audio/${levelFolder}/${fileName}`;
-      const audio = new Audio(audioPath);
+      const audioUrl = resolveAudioUrl(audioPath);
+      const audio = new Audio(audioUrl);
       audio.play().catch(err => {
-        console.error(`Failed to play manifest audio at ${audioPath}:`, err);
+        console.error(`Failed to play manifest audio at ${audioUrl}:`, err);
         fallbackToSpeech(word.character);
       });
     } else {
