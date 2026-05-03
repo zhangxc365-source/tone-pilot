@@ -64,8 +64,16 @@ export default function App() {
     setScreen('GAME');
   };
 
-  const finishGame = (finalHistory: any[], finalScore: number, totalWords: number) => {
-    setGameState(prev => ({ ...prev, history: finalHistory, score: finalScore, isGameOver: true, totalWords }));
+  const finishGame = (finalHistory: any[], finalScore: number, totalWords: number, p1Score?: number, p2Score?: number) => {
+    setGameState(prev => ({ 
+      ...prev, 
+      history: finalHistory, 
+      score: finalScore, 
+      isGameOver: true, 
+      totalWords,
+      p1Score: p1Score !== undefined ? p1Score : prev.p1Score,
+      p2Score: p2Score !== undefined ? p2Score : prev.p2Score
+    }));
     setScreen('RESULTS');
   };
 

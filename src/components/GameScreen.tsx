@@ -265,7 +265,7 @@ const Arena: React.FC<ArenaProps> = ({ id, gameState, currentWord, currentSyllab
 
 export const GameScreen: React.FC<{
   gameState: GameState;
-  onFinish: (history: GameHistoryItem[], score: number, totalWords: number) => void;
+  onFinish: (history: GameHistoryItem[], score: number, totalWords: number, p1Score?: number, p2Score?: number) => void;
   onHome: () => void;
   lang: Language;
 }> = ({ gameState: initialGameState, onFinish, onHome, lang }) => {
@@ -508,10 +508,10 @@ export const GameScreen: React.FC<{
   useEffect(() => {
     if (state.isGameOver) {
       setTimeout(() => {
-        onFinish(historyRef.current, state.score, words.length);
+        onFinish(historyRef.current, state.score, words.length, state.p1Score, state.p2Score);
       }, 1000);
     }
-  }, [state.isGameOver, onFinish, state.score, words.length]);
+  }, [state.isGameOver, onFinish, state.score, words.length, state.p1Score, state.p2Score]);
 
   const currentWord = words[currentWordIndex] || null;
 
