@@ -270,29 +270,16 @@ export const GameScreen: React.FC<{
   lang: Language;
 }> = ({ gameState: initialGameState, onFinish, onHome, lang }) => {
   const [state, setState] = useState<GameState>(() => {
-    const freshRun = {
-      isGameOver: false,
-      isPaused: false,
-      timeLeft: initialGameState.timeLeft > 0 ? initialGameState.timeLeft : 60,
-      score: 0,
-      combo: 0,
-    };
     if (initialGameState.mode === 'PK') {
-      const lives = initialGameState.lives > 0 ? initialGameState.lives : 3;
       return {
         ...initialGameState,
-        ...freshRun,
         p1Score: 0,
         p2Score: 0,
-        p1Lives: lives,
-        p2Lives: lives,
+        p1Lives: initialGameState.lives,
+        p2Lives: initialGameState.lives
       };
     }
-    return {
-      ...initialGameState,
-      ...freshRun,
-      lives: initialGameState.lives > 0 ? initialGameState.lives : 3,
-    };
+    return initialGameState;
   });
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentSyllableIndex, setCurrentSyllableIndex] = useState(0);
@@ -307,8 +294,6 @@ export const GameScreen: React.FC<{
   
   const historyRef = useRef<GameHistoryItem[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const gameOverTriggeredRef = useRef(false);
 
   useEffect(() => {
     const lessonWords = getLessonWords(state.level, state.lesson);
@@ -365,20 +350,16 @@ export const GameScreen: React.FC<{
   }, [currentWordIndex, words, playAudio]);
 
   const nextWord = useCallback(() => {
-    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     setIsTransitioning(true);
-
-    transitionTimerRef.current = setTimeout(() => {
-      setCurrentWordIndex(prev => {
-        if (words.length === 0) return 0;
-        return (prev + 1) % words.length;
-      });
+    
+    // Small gap before moving to next word
+    setTimeout(() => {
+      setCurrentWordIndex(prev => (prev + 1) % words.length);
       setCurrentSyllableIndex(0);
       setP1SyllableIndex(0);
       setP2SyllableIndex(0);
       setIsTransitioning(false);
-      transitionTimerRef.current = null;
-    }, 1500);
+    }, 1500); // 1.5 second "breather" gap
   }, [words.length]);
 
   const handleAnswer = useCallback((selectedTone: number, arenaId: string) => {
@@ -417,6 +398,7 @@ export const GameScreen: React.FC<{
             selectedTone,
             isCorrect: true,
             translation: currentWord.translation[lang],
+            player: isP1 ? '1' : '2'
           });
           nextWord();
         }
@@ -425,18 +407,25 @@ export const GameScreen: React.FC<{
         setShowSmoke(true);
         setTimeout(() => setShowSmoke(false), 500);
 
-        setState(prev => {
-          const nextP1Lives = isP1 ? Math.max(0, (prev.p1Lives || 0) - 1) : (prev.p1Lives || 0);
-          const nextP2Lives = !isP1 ? Math.max(0, (prev.p2Lives || 0) - 1) : (prev.p2Lives || 0);
-          return {
-            ...prev,
-            p1Score: isP1 ? Math.max(0, (prev.p1Score || 0) - 5) : prev.p1Score,
-            p2Score: !isP1 ? Math.max(0, (prev.p2Score || 0) - 5) : prev.p2Score,
-            p1Lives: nextP1Lives,
-            p2Lives: nextP2Lives,
-            isGameOver: nextP1Lives <= 0 || nextP2Lives <= 0,
-          };
+        historyRef.current.push({
+          character: currentWord.character,
+          pinyin: currentWord.pinyin,
+          pinyinPlain: currentWord.pinyinPlain,
+          correctTone: targetTone,
+          selectedTone,
+          isCorrect: false,
+          translation: currentWord.translation[lang],
+          player: isP1 ? '1' : '2'
         });
+
+        setState(prev => ({
+          ...prev,
+          p1Score: isP1 ? Math.max(0, (prev.p1Score || 0) - 5) : prev.p1Score,
+          p2Score: !isP1 ? Math.max(0, (prev.p2Score || 0) - 5) : prev.p2Score,
+          p1Lives: isP1 ? Math.max(0, (prev.p1Lives || 0) - 1) : prev.p1Lives,
+          p2Lives: !isP1 ? Math.max(0, (prev.p2Lives || 0) - 1) : prev.p2Lives,
+          isGameOver: (isP1 && (prev.p1Lives || 0) <= 1) || (!isP1 && (prev.p2Lives || 0) <= 1)
+        }));
         if (isP1) setP1SyllableIndex(0);
         else setP2SyllableIndex(0);
       }
@@ -527,28 +516,14 @@ export const GameScreen: React.FC<{
     };
   }, [isPaused, state.isGameOver]);
 
-  // Game End Checker — only fire once when isGameOver flips to true
+  // Game End Checker
   useEffect(() => {
-    if (!state.isGameOver) {
-      gameOverTriggeredRef.current = false;
-      return;
+    if (state.isGameOver) {
+      setTimeout(() => {
+        onFinish(historyRef.current, state.score, words.length, state.p1Score, state.p2Score);
+      }, 1000);
     }
-    if (gameOverTriggeredRef.current) return;
-    gameOverTriggeredRef.current = true;
-
-    const finishTimer = setTimeout(() => {
-      onFinish(historyRef.current, state.score, words.length, state.p1Score, state.p2Score);
-    }, 1000);
-
-    return () => clearTimeout(finishTimer);
   }, [state.isGameOver, onFinish, state.score, words.length, state.p1Score, state.p2Score]);
-
-  useEffect(() => {
-    return () => {
-      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
 
   const currentWord = words[currentWordIndex] || null;
 

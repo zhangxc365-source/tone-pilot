@@ -28,4 +28,5 @@ export interface GameHistoryItem {
   selectedTone: number;
   isCorrect: boolean;
   translation: string;
+  player?: '1' | '2';
 }
