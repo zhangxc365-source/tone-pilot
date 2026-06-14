@@ -42,6 +42,8 @@ export default function App() {
       isGameOver: false,
       history: [],
       totalWords: 0,
+      p1Score: 0,
+      p2Score: 0,
     }));
   };
 
@@ -114,7 +116,7 @@ export default function App() {
         )}
         {screen === 'GAME' && (
           <GameScreen 
-            key="game" 
+            key={`game-${gameState.level}-${gameState.lesson}-${gameState.mode}`}
             gameState={gameState} 
             onFinish={finishGame}
             onHome={() => setScreen('START')}
